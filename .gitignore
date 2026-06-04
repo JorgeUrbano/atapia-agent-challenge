@@ -1,0 +1,6 @@
+venv/
+.env
+.adk/
+__pycache__/
+*.pyc
+emotional_support_agent/.env
