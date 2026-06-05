@@ -3,4 +3,5 @@ venv/
 .adk/
 __pycache__/
 *.pyc
+agents/*/.env
 emotional_support_agent/.env
