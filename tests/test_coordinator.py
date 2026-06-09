@@ -1,9 +1,15 @@
 from agents.coordinator.coordinator import Coordinator
 
-coordinator = Coordinator()
 
-response = coordinator.handle_message(
-    "Me siento bastante solo últimamente"
-)
+def test_coordinator_exploration():
 
-print(response)
+    coordinator = Coordinator()
+
+    response = coordinator.handle_message(
+        "I feel terrible"
+    )
+
+    assert (
+        "understand your situation"
+        in response
+    )
