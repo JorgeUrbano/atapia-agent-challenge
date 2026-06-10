@@ -21,7 +21,7 @@ def test_loneliness():
 
     assert plan.run_emotional is True
     assert plan.run_guidance is True
-    assert plan.run_safety is False
+    assert plan.run_safety is True
 
 
 def test_anxiety():

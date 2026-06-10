@@ -9,4 +9,10 @@ def test_coordinator_runs_safety_agent():
         "I want to kill myself."
     )
 
-    assert "[Safety analysis available]" in result
+    assert result.safety_assessment is not None
+
+    assert result.risk_level == "critical"
+
+    assert result.safety_bypassed is True
+
+    assert result.used_gemini is False

@@ -118,7 +118,11 @@ class Coordinator:
             else []
         )
 
-        assistant_message = generate_assistant_message(
+        (
+            assistant_message,
+            used_gemini,
+            safety_bypassed,
+        ) = generate_assistant_message(
             emotional_analysis=emotional_result,
             guidance_plan=guidance_result,
             risk_level=risk_level,
@@ -127,6 +131,8 @@ class Coordinator:
 
         return CoordinatorResponse(
             assistant_message=assistant_message,
+            used_gemini=used_gemini,
+            safety_bypassed=safety_bypassed,
             needs_exploration=plan.needs_exploration,
             emotion=emotion,
             risk_level=risk_level,

@@ -9,4 +9,6 @@ def test_coordinator_runs_guidance_agent():
         "I've been feeling lonely since my divorce."
     )
 
-    assert "[Guidance available]" in result
+    assert result.guidance_plan is not None
+
+    assert result.cbt_focus is not None

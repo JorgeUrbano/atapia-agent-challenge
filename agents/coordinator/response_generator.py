@@ -80,15 +80,26 @@ def generate_assistant_message(
 
     # Critical risk never goes through Gemini
     if risk_level == "critical":
-        return CRITICAL_SAFETY_MESSAGE
+
+        return (
+            CRITICAL_SAFETY_MESSAGE,
+            False,   # used_gemini
+            True,    # safety_bypassed
+        )
 
     try:
 
-        return generate_natural_response(
+        response = generate_natural_response(
             emotional_analysis=emotional_analysis,
             safety_assessment=None,
             guidance_plan=guidance_plan,
             needs_exploration=needs_exploration,
+        )
+
+        return (
+            response,
+            True,    # used_gemini
+            False,   # safety_bypassed
         )
 
     except Exception as e:
@@ -99,9 +110,15 @@ def generate_assistant_message(
             f"Error: {e}"
         )
 
-        return _fallback_response(
+        response = _fallback_response(
             emotional_analysis=emotional_analysis,
             guidance_plan=guidance_plan,
             risk_level=risk_level,
             needs_exploration=needs_exploration,
+        )
+
+        return (
+            response,
+            False,   # used_gemini
+            False,   # safety_bypassed
         )

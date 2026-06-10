@@ -9,4 +9,6 @@ def test_coordinator_runs_emotional_agent():
         "I've been feeling lonely since my divorce."
     )
 
-    assert "[Emotional analysis available]" in result
+    assert result.emotional_analysis is not None
+
+    assert result.emotion == "loneliness"

@@ -14,6 +14,19 @@ class CoordinatorResponse(BaseModel):
         description="Final response shown to the user."
     )
 
+    used_gemini: bool = Field(
+        default=False,
+        description="Whether Gemini generated the final response."
+    )
+
+    safety_bypassed: bool = Field(
+        default=False,
+        description=(
+            "Whether the response bypassed Gemini due to "
+            "critical safety handling."
+        )
+    )
+
     needs_exploration: bool = Field(
         default=False,
         description="Whether additional exploration is needed."

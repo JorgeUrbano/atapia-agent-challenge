@@ -9,7 +9,6 @@ def test_coordinator_exploration():
         "I feel terrible"
     )
 
-    assert (
-        "understand your situation"
-        in response
-    )
+    assert response.needs_exploration is True
+
+    assert response.assistant_message != ""

@@ -49,6 +49,9 @@ class Planner:
 
         text = user_message.lower()
 
+        if any(k in text for k in self.GREETINGS):
+            return ExecutionPlan()
+
         if any(k in text for k in self.HIGH_RISK_KEYWORDS):
             return ExecutionPlan(
                 run_emotional=True,
@@ -68,20 +71,21 @@ class Planner:
         if any(k in text for k in self.EMOTIONAL_KEYWORDS):
             return ExecutionPlan(
                 run_emotional=True,
+                run_safety=True,
                 run_guidance=True,
                 needs_exploration=True,
             )
 
         if any(k in text for k in self.GUIDANCE_KEYWORDS):
             return ExecutionPlan(
+                run_safety=True,
                 run_guidance=True,
+                needs_exploration=True,
             )
-
-        if any(k in text for k in self.GREETINGS):
-            return ExecutionPlan()
 
         return ExecutionPlan(
             run_emotional=True,
+            run_safety=True,
             run_guidance=True,
             needs_exploration=True,
         )
