@@ -32,13 +32,24 @@ emotional_agent = Agent(
     "Behavioral signals may include examples such as: "
     "substance_use, social_withdrawal, avoidance, sleep_problems, overeating. "
 
-    "Only use information explicitly present in the user's message. "
+        
+    "Use information explicitly present in: "
 
-    "Do not infer missing information. "
-    "Do not invent emotions. "
-    "Do not invent triggers. "
-    "Do not invent duration. "
-    "Do not invent behavioral signals. "
+    "- Known context (if provided)"
+    "- Current message"
+
+    "Known context contains information previously shared by the user. "
+
+    "You may use both sources when identifying: "
+
+    "- emotions"
+    "- triggers"
+    "- duration"
+    "- behavioral signals"
+
+    "Do not invent information that is not present in either source. "
+
+    "Do not infer facts beyond the provided context. "
 
     "If the emotional state is unclear, use 'unknown'. "
 
