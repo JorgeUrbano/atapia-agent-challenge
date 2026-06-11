@@ -53,6 +53,127 @@ def detect_critical_safety_risk(message: str) -> bool:
     return any(pattern in text for pattern in critical_patterns)
 
 
+def _contains_any(text: str, keywords: list[str]) -> bool:
+    return any(keyword in text for keyword in keywords)
+
+
+def infer_response_theme(
+    user_message: str,
+    emotion: str | None,
+    memory_context: str | None,
+) -> str:
+    text = f"{user_message or ''} {memory_context or ''}".lower()
+    normalized_emotion = (emotion or "").lower()
+
+    if (
+        normalized_emotion == "loneliness"
+        or _contains_any(
+            text,
+            [
+                "lonely",
+                "alone",
+                "divorce",
+                "separated",
+                "isolated",
+                "soledad",
+                "solo",
+                "divorcio",
+            ],
+        )
+    ):
+        return "loneliness"
+
+    if (
+        normalized_emotion == "stress"
+        or _contains_any(
+            text,
+            [
+                "work",
+                "job",
+                "stressed",
+                "stress",
+                "pressure",
+                "overwhelmed",
+                "trabajo",
+                "estrés",
+                "estres",
+                "presionado",
+            ],
+        )
+    ):
+        return "work_stress"
+
+    if (
+        normalized_emotion == "anxiety"
+        or _contains_any(
+            text,
+            [
+                "anxious",
+                "anxiety",
+                "worried",
+                "worry",
+                "can't stop thinking",
+                "preocupado",
+                "ansiedad",
+                "no puedo parar de pensar",
+            ],
+        )
+    ):
+        return "anxiety"
+
+    if (
+        normalized_emotion == "sadness"
+        or _contains_any(
+            text,
+            [
+                "sad",
+                "depressed",
+                "down",
+                "bad",
+                "triste",
+                "deprimido",
+                "mal",
+            ],
+        )
+    ):
+        return "sadness"
+
+    return "generic"
+
+
+def _question_from_guidance(guidance_result) -> str | None:
+    if guidance_result and guidance_result.suggested_questions:
+        return guidance_result.suggested_questions[0]
+
+    return None
+
+
+def _question_for_theme(theme: str, guidance_result) -> str:
+    guidance_question = _question_from_guidance(guidance_result)
+    if guidance_question:
+        return guidance_question
+
+    focus = (
+        guidance_result.cbt_focus
+        if guidance_result
+        else None
+    )
+    if focus == "cognitive_reframing":
+        return "What thought keeps coming back most often?"
+
+    if focus == "problem_solving":
+        return "Which part feels most actionable today?"
+
+    questions = {
+        "loneliness": "What part of the day feels hardest for you right now?",
+        "work_stress": "What part of work is creating the most pressure right now?",
+        "anxiety": "What worry is taking up the most space today?",
+        "sadness": "What part of this feels heaviest right now?",
+        "generic": "What feels like the hardest part to handle today?",
+    }
+    return questions.get(theme, questions["generic"])
+
+
 def build_fast_assistant_message(
     user_message: str,
     emotion: str | None,
@@ -61,71 +182,75 @@ def build_fast_assistant_message(
     memory_context=None,
 ) -> str:
 
-    normalized_emotion = emotion or "what you are feeling"
-    text = user_message.lower()
+    text = (user_message or "").lower()
     context = (memory_context or "").lower()
-
-    emotion_phrases = {
-        "loneliness": "Feeling lonely can be really difficult, especially when connection feels harder to reach.",
-        "sadness": "Feeling sad can feel heavy, especially when it is connected to something important in your life.",
-        "stress": "Stress can feel exhausting when there is a lot to carry or it is hard to disconnect.",
-        "anxiety": "Anxiety can feel intense when your mind keeps scanning for what might go wrong.",
-        "frustration": "Frustration can build up when something feels stuck or unfair.",
-        "guilt": "Guilt can be painful when you are trying to make sense of what happened.",
-        "fear": "Fear can feel overwhelming when your sense of safety or certainty is shaken.",
-        "anger": "Anger can be hard to sit with when something important feels threatened.",
-        "grief": "Grief can come in waves when you are carrying a meaningful loss.",
-    }
-
-    if "divorce" in text or "divorce" in context:
-        emotion_sentence = (
-            "Feeling this way after an important life change can be really difficult."
-        )
-    else:
-        emotion_sentence = emotion_phrases.get(
-            normalized_emotion,
-            "What you are describing sounds important, and it makes sense to slow down and understand it.",
-        )
-
-    question = None
-    if (
-        guidance_result
-        and guidance_result.suggested_questions
-    ):
-        question = guidance_result.suggested_questions[0]
-
-    if not question and needs_exploration:
-        focus = (
-            guidance_result.cbt_focus
-            if guidance_result
-            else None
-        )
-        focus_questions = {
-            "social_connection": "What moments tend to make this feeling stronger?",
-            "stress_management": "What part of the situation is weighing on you the most right now?",
-            "grief_processing": "What feels most present for you when this comes up?",
-            "emotion_regulation": "Where do you notice this feeling most strongly right now?",
-            "problem_solving": "What is the hardest part to deal with today?",
-            "cognitive_reframing": "What thought keeps coming back most often?",
-            "behavioral_activation": "What has felt hardest to do lately?",
-            "self_compassion": "What would you need to hear from yourself right now?",
-            "exploration": "What feels most important to understand first?",
-        }
-        question = focus_questions.get(
-            focus,
-            "What feels most important to understand first?",
-        )
-
-    response = (
-        "Thank you for sharing that with me. "
-        f"{emotion_sentence} "
-        "I'm here to support you as we explore this together."
+    theme = infer_response_theme(
+        user_message=user_message,
+        emotion=emotion,
+        memory_context=memory_context,
     )
+    question = _question_for_theme(theme, guidance_result)
 
-    if question:
-        return f"{response} {question}"
+    if theme == "loneliness":
+        if "divorce" in text or "divorce" in context:
+            body = (
+                "That sounds really painful, especially if the divorce changed "
+                "your daily routines and the people you used to rely on. "
+                "A useful first step could be to choose one lonely moment in the "
+                "day and plan one small connection around it: sending a message, "
+                "taking a walk somewhere familiar, or arranging a low-pressure "
+                "conversation with someone you trust."
+            )
+        else:
+            body = (
+                "Loneliness can feel heavier when connection starts to seem out "
+                "of reach. One small step is to make connection concrete: pick "
+                "one person, one message, or one place where being around others "
+                "feels low-pressure, and put it into today's plan."
+            )
+    elif theme == "work_stress":
+        body = (
+            "Work stress can become exhausting when your mind keeps carrying it "
+            "after the day ends. One practical step is to separate what is urgent "
+            "from what is only worrying: write down the top three things on your "
+            "mind, mark what can actually be acted on today, and leave the rest "
+            "for a specific review time tomorrow."
+        )
+    elif theme == "anxiety":
+        body = (
+            "When anxiety loops, the mind often treats every worry as equally "
+            "urgent. Try writing three short lines: the worry, the evidence you "
+            "have right now, and the next smallest useful step. That can help "
+            "move the worry from a loop into something more manageable."
+        )
+    elif theme == "sadness":
+        if "divorce" in context:
+            body = (
+                "It makes sense that feeling bad could still be tied to the "
+                "divorce and the changes around it. A small, realistic step is "
+                "to choose one stabilizing action for today, such as eating "
+                "something simple, getting outside briefly, or sending one honest "
+                "message to someone safe."
+            )
+        else:
+            body = (
+                "Feeling low can make even ordinary things take more effort. "
+                "Rather than trying to fix everything at once, choose one small "
+                "action that supports your body or your day: a shower, a short "
+                "walk, a meal, or writing down what has been weighing on you."
+            )
+    else:
+        body = (
+            "This sounds like something worth taking seriously, and it may help "
+            "to make it a little more concrete. Try naming the main feeling, the "
+            "situation that seems to trigger it, and one small thing you can do "
+            "in the next hour to reduce the pressure."
+        )
 
-    return response
+    if needs_exploration and question:
+        return f"{body}\n\n{question}"
+
+    return body
 
 
 class Coordinator:
