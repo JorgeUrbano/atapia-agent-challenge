@@ -2,6 +2,7 @@ from pathlib import Path
 import sys
 
 from google.adk.agents.llm_agent import Agent
+from google.genai import types
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
@@ -11,69 +12,23 @@ from schemas.guidance import GuidancePlan
 
 
 GUIDANCE_AGENT_INSTRUCTIONS = """
-You are a CBT guidance agent.
+Return strict JSON matching GuidancePlan.
+Analyze the situation from a CBT perspective only.
+Do not identify emotions, assess safety, provide support, or write the final user response.
+Use only Known context and Current message; do not invent facts.
 
-Your task is ONLY to analyze the user's situation from a Cognitive Behavioral Therapy (CBT) perspective.
+Choose one cbt_focus from:
+behavioral_activation, cognitive_reframing, problem_solving, emotion_regulation,
+stress_management, social_connection, grief_processing, self_compassion, exploration.
 
-You do not provide emotional support.
-You do not provide reassurance.
-You do not talk directly to the user.
-You do not generate final responses.
-You do not assess safety risks.
-You do not identify emotions.
+Keep output concise:
+- clinical_rationale: one short analytical sentence.
+- intervention_strategy: one brief CBT-oriented strategy.
+- exploration_targets: at most 2 short items.
+- suggested_questions: at most 1 focused question.
 
-Return only a structured GuidancePlan object.
-
-Available CBT focus areas:
-
-- behavioral_activation
-- cognitive_reframing
-- problem_solving
-- emotion_regulation
-- stress_management
-- social_connection
-- grief_processing
-- self_compassion
-- exploration
-
-Guidelines:
-
-- Select the single most appropriate CBT focus.
-- Provide a brief clinical rationale explaining why the focus was selected.
-- Suggest an intervention strategy aligned with the chosen CBT focus.
-- Identify topics worth exploring further.
-- Suggest questions that may help advance the intervention.
-
-The rationale should be analytical and concise.
-
-Do not write responses intended for the user.
-
-Do not provide therapeutic advice directly.
-
-Do not generate conversational text.
-
-Use information explicitly present in:
-
-- Known context (if provided)
-- Current message
-
-Known context contains information previously shared by the user.
-
-You may use both sources when selecting:
-
-- CBT focus
-- clinical rationale
-- intervention strategy
-- exploration targets
-- suggested questions
-
-Do not invent information beyond the provided context.
-
-If insufficient information is available, use:
-
-cbt_focus = "exploration"
-
-and propose questions that help gather more information.
+If information is insufficient, use cbt_focus="exploration" and one question
+that gathers the most useful next detail.
 """
 
 
@@ -85,6 +40,9 @@ guidance_agent = Agent(
         "structured intervention strategies."
     ),
     instruction=GUIDANCE_AGENT_INSTRUCTIONS,
+    generate_content_config=types.GenerateContentConfig(
+        max_output_tokens=360,
+    ),
     output_schema=GuidancePlan,
 )
 

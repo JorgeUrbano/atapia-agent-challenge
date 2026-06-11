@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 
 from agents.coordinator.planner import Planner
@@ -20,6 +21,85 @@ from services.memory import MemoryService
 
 
 logger = logging.getLogger("uvicorn.error")
+FAST_VERBALIZER = (
+    os.getenv("ATAPIA_FAST_VERBALIZER", "false").lower()
+    == "true"
+)
+
+
+def build_fast_assistant_message(
+    user_message: str,
+    emotion: str | None,
+    guidance_result,
+    needs_exploration: bool,
+    memory_context=None,
+) -> str:
+
+    normalized_emotion = emotion or "what you are feeling"
+    text = user_message.lower()
+    context = (memory_context or "").lower()
+
+    emotion_phrases = {
+        "loneliness": "Feeling lonely can be really difficult, especially when connection feels harder to reach.",
+        "sadness": "Feeling sad can feel heavy, especially when it is connected to something important in your life.",
+        "stress": "Stress can feel exhausting when there is a lot to carry or it is hard to disconnect.",
+        "anxiety": "Anxiety can feel intense when your mind keeps scanning for what might go wrong.",
+        "frustration": "Frustration can build up when something feels stuck or unfair.",
+        "guilt": "Guilt can be painful when you are trying to make sense of what happened.",
+        "fear": "Fear can feel overwhelming when your sense of safety or certainty is shaken.",
+        "anger": "Anger can be hard to sit with when something important feels threatened.",
+        "grief": "Grief can come in waves when you are carrying a meaningful loss.",
+    }
+
+    if "divorce" in text or "divorce" in context:
+        emotion_sentence = (
+            "Feeling this way after an important life change can be really difficult."
+        )
+    else:
+        emotion_sentence = emotion_phrases.get(
+            normalized_emotion,
+            "What you are describing sounds important, and it makes sense to slow down and understand it.",
+        )
+
+    question = None
+    if (
+        guidance_result
+        and guidance_result.suggested_questions
+    ):
+        question = guidance_result.suggested_questions[0]
+
+    if not question and needs_exploration:
+        focus = (
+            guidance_result.cbt_focus
+            if guidance_result
+            else None
+        )
+        focus_questions = {
+            "social_connection": "What moments tend to make this feeling stronger?",
+            "stress_management": "What part of the situation is weighing on you the most right now?",
+            "grief_processing": "What feels most present for you when this comes up?",
+            "emotion_regulation": "Where do you notice this feeling most strongly right now?",
+            "problem_solving": "What is the hardest part to deal with today?",
+            "cognitive_reframing": "What thought keeps coming back most often?",
+            "behavioral_activation": "What has felt hardest to do lately?",
+            "self_compassion": "What would you need to hear from yourself right now?",
+            "exploration": "What feels most important to understand first?",
+        }
+        question = focus_questions.get(
+            focus,
+            "What feels most important to understand first?",
+        )
+
+    response = (
+        "Thank you for sharing that with me. "
+        f"{emotion_sentence} "
+        "I'm here to support you as we explore this together."
+    )
+
+    if question:
+        return f"{response} {question}"
+
+    return response
 
 
 class Coordinator:
@@ -102,6 +182,8 @@ class Coordinator:
                     verbalizer_start = time.perf_counter()
                     response = self._synthesize_response(
                         plan=plan,
+                        user_message=user_message,
+                        memory_context=memory_context,
                         emotional_result=emotional_result,
                         safety_result=safety_result,
                         guidance_result=guidance_result,
@@ -195,6 +277,8 @@ class Coordinator:
         verbalizer_start = time.perf_counter()
         response = self._synthesize_response(
             plan=plan,
+            user_message=user_message,
+            memory_context=memory_context,
             emotional_result=emotional_result,
             safety_result=safety_result,
             guidance_result=guidance_result,
@@ -337,6 +421,8 @@ class Coordinator:
     def _synthesize_response(
         self,
         plan,
+        user_message,
+        memory_context,
         emotional_result,
         safety_result,
         guidance_result,
@@ -372,16 +458,36 @@ class Coordinator:
             else []
         )
 
-        (
-            assistant_message,
-            used_gemini,
-            safety_bypassed,
-        ) = generate_assistant_message(
-            emotional_analysis=emotional_result,
-            guidance_plan=guidance_result,
-            risk_level=risk_level,
-            needs_exploration=plan.needs_exploration,
+        logger.info(
+            "coordinator_timing fast_verbalizer_enabled=%s",
+            FAST_VERBALIZER,
         )
+
+        if (
+            FAST_VERBALIZER
+            and risk_level != "critical"
+        ):
+            assistant_message = build_fast_assistant_message(
+                user_message=user_message,
+                emotion=emotion,
+                guidance_result=guidance_result,
+                needs_exploration=plan.needs_exploration,
+                memory_context=memory_context,
+            )
+            used_gemini = False
+            safety_bypassed = False
+
+        else:
+            (
+                assistant_message,
+                used_gemini,
+                safety_bypassed,
+            ) = generate_assistant_message(
+                emotional_analysis=emotional_result,
+                guidance_plan=guidance_result,
+                risk_level=risk_level,
+                needs_exploration=plan.needs_exploration,
+            )
 
         return CoordinatorResponse(
             assistant_message=assistant_message,
