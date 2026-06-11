@@ -1,3 +1,6 @@
+import logging
+import time
+
 from agents.coordinator.planner import Planner
 from agents.coordinator.response_generator import (
     generate_assistant_message,
@@ -16,6 +19,9 @@ from services.adk_runner import run_agent
 from services.memory import MemoryService
 
 
+logger = logging.getLogger("uvicorn.error")
+
+
 class Coordinator:
 
     def __init__(self, memory_service=None):
@@ -28,8 +34,21 @@ class Coordinator:
         user_id: str = "local_user",
     ):
 
+        total_start = time.perf_counter()
+
+        planner_start = time.perf_counter()
         plan = self.planner.create_plan(user_message)
+        logger.info(
+            "coordinator_timing planner_seconds=%.2f",
+            time.perf_counter() - planner_start,
+        )
+
+        memory_start = time.perf_counter()
         memory_context = self._build_memory_context(user_id)
+        logger.info(
+            "coordinator_timing memory_seconds=%.2f",
+            time.perf_counter() - memory_start,
+        )
 
         agent_message = self._with_memory_context(
             memory_context=memory_context,
@@ -40,71 +59,167 @@ class Coordinator:
         safety_result = None
         guidance_result = None
 
-        if plan.run_emotional:
-
-            try:
-
-                emotional_result = (
-                    self._run_emotional_agent(
-                        agent_message
-                    )
-                )
-
-            except Exception as e:
-
-                print(
-                    f"Emotional agent failed: {e}"
-                )
-
-                emotional_result = None
-
         if plan.run_safety:
 
             try:
 
+                safety_start = time.perf_counter()
                 safety_result = (
                     self._run_safety_agent(
                         agent_message
                     )
                 )
+                logger.info(
+                    "coordinator_timing safety_agent_seconds=%.2f",
+                    time.perf_counter() - safety_start,
+                )
+
+                if self._is_safety_fast_path(safety_result):
+                    logger.info(
+                        "coordinator_timing safety_fast_path=%s",
+                        True,
+                    )
+                    logger.info(
+                        "coordinator_timing emotional_agent_seconds=%.2f",
+                        0.0,
+                    )
+                    logger.info(
+                        "coordinator_timing guidance_agent_seconds=%.2f",
+                        0.0,
+                    )
+
+                    memory_save_start = time.perf_counter()
+                    self._store_memory(
+                        user_id=user_id,
+                        user_message=user_message,
+                        emotional_result=emotional_result,
+                    )
+                    logger.info(
+                        "coordinator_timing memory_save_seconds=%.2f",
+                        time.perf_counter() - memory_save_start,
+                    )
+
+                    verbalizer_start = time.perf_counter()
+                    response = self._synthesize_response(
+                        plan=plan,
+                        emotional_result=emotional_result,
+                        safety_result=safety_result,
+                        guidance_result=guidance_result,
+                    )
+                    logger.info(
+                        "coordinator_timing verbalizer_seconds=%.2f",
+                        time.perf_counter() - verbalizer_start,
+                    )
+
+                    logger.info(
+                        "coordinator_timing total_seconds=%.2f user_id=%s",
+                        time.perf_counter() - total_start,
+                        user_id,
+                    )
+
+                    return response
+
+                logger.info(
+                    "coordinator_timing safety_fast_path=%s",
+                    False,
+                )
 
             except Exception as e:
 
-                print(
-                    f"Safety agent failed: {e}"
+                logger.exception(
+                    "Safety agent failed: %s",
+                    e,
                 )
 
                 safety_result = None
+
+        if plan.run_emotional:
+
+            try:
+
+                emotional_start = time.perf_counter()
+                emotional_result = (
+                    self._run_emotional_agent(
+                        agent_message
+                    )
+                )
+                logger.info(
+                    "coordinator_timing emotional_agent_seconds=%.2f",
+                    time.perf_counter() - emotional_start,
+                )
+
+            except Exception as e:
+
+                logger.exception(
+                    "Emotional agent failed: %s",
+                    e,
+                )
+
+                emotional_result = None
 
         if plan.run_guidance:
 
             try:
 
+                guidance_start = time.perf_counter()
                 guidance_result = (
                     self._run_guidance_agent(
                         agent_message
                     )
                 )
+                logger.info(
+                    "coordinator_timing guidance_agent_seconds=%.2f",
+                    time.perf_counter() - guidance_start,
+                )
 
             except Exception as e:
 
-                print(
-                    f"Guidance agent failed: {e}"
+                logger.exception(
+                    "Guidance agent failed: %s",
+                    e,
                 )
 
                 guidance_result = None
 
+        memory_save_start = time.perf_counter()
         self._store_memory(
             user_id=user_id,
             user_message=user_message,
             emotional_result=emotional_result,
         )
+        logger.info(
+            "coordinator_timing memory_save_seconds=%.2f",
+            time.perf_counter() - memory_save_start,
+        )
 
-        return self._synthesize_response(
+        verbalizer_start = time.perf_counter()
+        response = self._synthesize_response(
             plan=plan,
             emotional_result=emotional_result,
             safety_result=safety_result,
             guidance_result=guidance_result,
+        )
+        logger.info(
+            "coordinator_timing verbalizer_seconds=%.2f",
+            time.perf_counter() - verbalizer_start,
+        )
+
+        logger.info(
+            "coordinator_timing total_seconds=%.2f user_id=%s",
+            time.perf_counter() - total_start,
+            user_id,
+        )
+
+        return response
+
+    def _is_safety_fast_path(
+        self,
+        safety_result,
+    ) -> bool:
+
+        return (
+            getattr(safety_result, "risk_level", None)
+            == "critical"
         )
 
     def _build_memory_context(
