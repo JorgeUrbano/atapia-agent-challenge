@@ -15,3 +15,4 @@ class ChatResponse(BaseModel):
     risk_level: str | None = None
     safety_bypassed: bool | None = None
     needs_exploration: bool | None = None
+    latency_seconds: float | None = None

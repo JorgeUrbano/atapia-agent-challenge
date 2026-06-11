@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Atapia</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="app-header">
+        <div class="brand">
+          <div>
+            <h1>Atapia</h1>
+            <p>Your AI-powered emotional support advisor</p>
+          </div>
+        </div>
+        <div class="session-panel" aria-label="Session ID">
+          <span>session_id</span>
+          <code id="sessionId">...</code>
+        </div>
+      </header>
+
+      <nav class="tabs" aria-label="Primary">
+        <button id="chatTab" class="tab active" type="button">Chat</button>
+        <button id="historyTab" class="tab" type="button">Conversations</button>
+      </nav>
+
+      <section id="chatView" class="view active">
+        <section
+          id="messages"
+          class="messages"
+          aria-live="polite"
+          aria-label="Conversation"
+        ></section>
+
+        <p id="loading" class="loading" hidden>Atapia is thinking...</p>
+        <p id="error" class="error" hidden>
+          Could not connect to Atapia. Check that the API is running.
+        </p>
+
+        <form id="chatForm" class="composer">
+          <label class="sr-only" for="messageInput">Message</label>
+          <input
+            id="messageInput"
+            name="message"
+            type="text"
+            autocomplete="off"
+            placeholder="Write how you feel..."
+          />
+          <button type="submit">Send</button>
+        </form>
+      </section>
+
+      <section
+        id="historyView"
+        class="view history-view"
+        aria-label="Previous conversations"
+      >
+        <div class="history-header">
+          <div>
+            <h2>Previous conversations</h2>
+            <p>Saved locally in this browser for the demo.</p>
+          </div>
+          <button id="newConversationButton" type="button">New chat</button>
+        </div>
+        <div id="historyList" class="history-list"></div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
