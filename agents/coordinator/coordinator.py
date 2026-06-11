@@ -4,6 +4,7 @@ import time
 
 from agents.coordinator.planner import Planner
 from agents.coordinator.response_generator import (
+    CRITICAL_SAFETY_MESSAGE,
     generate_assistant_message,
 )
 
@@ -25,6 +26,31 @@ FAST_VERBALIZER = (
     os.getenv("ATAPIA_FAST_VERBALIZER", "false").lower()
     == "true"
 )
+
+
+def detect_critical_safety_risk(message: str) -> bool:
+    text = (message or "").lower()
+    critical_patterns = [
+        "kill myself",
+        "killing myself",
+        "suicide",
+        "suicidal",
+        "end my life",
+        "take my own life",
+        "want to die",
+        "don't want to live",
+        "do not want to live",
+        "hurt myself",
+        "suicidarme",
+        "quiero suicidarme",
+        "me quiero suicidar",
+        "quitarme la vida",
+        "acabar con mi vida",
+        "quiero morirme",
+        "no quiero vivir",
+        "hacerme daño",
+    ]
+    return any(pattern in text for pattern in critical_patterns)
 
 
 def build_fast_assistant_message(
@@ -115,6 +141,59 @@ class Coordinator:
     ):
 
         total_start = time.perf_counter()
+
+        deterministic_guard_start = time.perf_counter()
+        if detect_critical_safety_risk(user_message):
+            logger.info(
+                "coordinator_timing deterministic_safety_guard_seconds=%.4f",
+                time.perf_counter() - deterministic_guard_start,
+            )
+            logger.info(
+                "coordinator_timing deterministic_safety_bypass=%s",
+                True,
+            )
+            logger.info(
+                "coordinator_timing safety_agent_seconds=%.2f",
+                0.0,
+            )
+            logger.info(
+                "coordinator_timing emotional_agent_seconds=%.2f",
+                0.0,
+            )
+            logger.info(
+                "coordinator_timing guidance_agent_seconds=%.2f",
+                0.0,
+            )
+            logger.info(
+                "coordinator_timing fast_verbalizer_enabled=%s",
+                FAST_VERBALIZER,
+            )
+            logger.info(
+                "coordinator_timing verbalizer_seconds=%.2f",
+                0.0,
+            )
+            logger.info(
+                "coordinator_timing total_seconds=%.2f user_id=%s",
+                time.perf_counter() - total_start,
+                user_id,
+            )
+            return CoordinatorResponse(
+                assistant_message=CRITICAL_SAFETY_MESSAGE,
+                used_gemini=False,
+                safety_bypassed=True,
+                needs_exploration=True,
+                emotion=None,
+                risk_level="critical",
+            )
+
+        logger.info(
+            "coordinator_timing deterministic_safety_guard_seconds=%.4f",
+            time.perf_counter() - deterministic_guard_start,
+        )
+        logger.info(
+            "coordinator_timing deterministic_safety_bypass=%s",
+            False,
+        )
 
         planner_start = time.perf_counter()
         plan = self.planner.create_plan(user_message)
