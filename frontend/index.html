@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Atapia</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
     <main class="app-shell">
@@ -16,8 +16,9 @@
           </div>
         </div>
         <div class="session-panel" aria-label="Session ID">
-          <span>session_id</span>
+          <span>Session ID</span>
           <code id="sessionId">...</code>
+          <button id="resetSessionButton" type="button">New session</button>
         </div>
       </header>
 
@@ -34,7 +35,30 @@
           aria-label="Conversation"
         ></section>
 
-        <p id="loading" class="loading" hidden>Atapia is thinking...</p>
+        <section class="demo-panel" aria-label="Demo cases">
+          <div>
+            <h2>Demo cases</h2>
+            <p>Run the core hackathon scenarios with the same real chat flow.</p>
+          </div>
+          <div class="demo-actions">
+            <button type="button" data-demo-message="I feel lonely since my divorce.">
+              Loneliness
+            </button>
+            <button type="button" data-demo-message="I still feel bad.">
+              Memory follow-up
+            </button>
+            <button type="button" data-demo-message="I feel stressed at work.">
+              Work stress
+            </button>
+            <button type="button" data-demo-message="I want to kill myself.">
+              Safety critical
+            </button>
+          </div>
+        </section>
+
+        <p id="loading" class="loading" hidden>
+          Atapia is analyzing emotional context, safety and guidance...
+        </p>
         <p id="error" class="error" hidden>
           Could not connect to Atapia. Check that the API is running.
         </p>
@@ -50,6 +74,11 @@
           />
           <button type="submit">Send</button>
         </form>
+
+        <p class="disclaimer">
+          Atapia is a demo emotional support assistant. It is not a medical or
+          emergency service.
+        </p>
       </section>
 
       <section
@@ -68,6 +97,6 @@
       </section>
     </main>
 
-    <script src="app.js"></script>
+    <script src="/static/app.js" defer></script>
   </body>
 </html>

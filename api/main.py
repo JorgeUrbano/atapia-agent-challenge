@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import logging
 import time
+from pathlib import Path
 from uuid import uuid4
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from api.firestore_service import ensure_session, save_message
@@ -14,8 +17,11 @@ from agents.coordinator.coordinator import Coordinator
 
 
 logger = logging.getLogger("uvicorn.error")
+BASE_DIR = Path(__file__).resolve().parent.parent
+FRONTEND_DIR = BASE_DIR / "frontend"
 
 app = FastAPI(title="Atapia API")
+app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -34,6 +40,11 @@ coordinator = Coordinator()
 
 class HealthResponse(BaseModel):
     status: str
+
+
+@app.get("/")
+def serve_frontend() -> FileResponse:
+    return FileResponse(FRONTEND_DIR / "index.html")
 
 
 def save_message_background(

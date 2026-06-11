@@ -13,6 +13,11 @@ from schemas.guidance import GuidancePlan
 
 GUIDANCE_AGENT_INSTRUCTIONS = """
 Return strict JSON matching GuidancePlan.
+Return only valid JSON.
+Use double quotes for all keys and string values.
+Do not use markdown.
+Do not include explanations outside JSON.
+Do not include trailing commas.
 Analyze the situation from a CBT perspective only.
 Do not identify emotions, assess safety, provide support, or write the final user response.
 Use only Known context and Current message; do not invent facts.
@@ -41,7 +46,8 @@ guidance_agent = Agent(
     ),
     instruction=GUIDANCE_AGENT_INSTRUCTIONS,
     generate_content_config=types.GenerateContentConfig(
-        max_output_tokens=360,
+        max_output_tokens=420,
+        response_mime_type="application/json",
     ),
     output_schema=GuidancePlan,
 )

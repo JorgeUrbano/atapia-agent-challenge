@@ -1,4 +1,4 @@
-const API_URL = "http://127.0.0.1:8000/chat";
+const API_URL = "/chat";
 const SESSION_STORAGE_KEY = "atapia_session_id";
 const CONVERSATIONS_STORAGE_KEY = "atapia_conversations";
 
@@ -14,6 +14,8 @@ const chatViewEl = document.querySelector("#chatView");
 const historyViewEl = document.querySelector("#historyView");
 const historyListEl = document.querySelector("#historyList");
 const newConversationButtonEl = document.querySelector("#newConversationButton");
+const resetSessionButtonEl = document.querySelector("#resetSessionButton");
+const demoCaseButtonEls = document.querySelectorAll("[data-demo-message]");
 
 function getSessionId() {
   const existingSessionId = localStorage.getItem(SESSION_STORAGE_KEY);
@@ -92,6 +94,10 @@ function setLoading(isLoading) {
   loadingEl.hidden = !isLoading;
   inputEl.disabled = isLoading;
   formEl.querySelector("button").disabled = isLoading;
+  resetSessionButtonEl.disabled = isLoading;
+  demoCaseButtonEls.forEach((buttonEl) => {
+    buttonEl.disabled = isLoading;
+  });
 }
 
 function setError(isVisible) {
@@ -117,8 +123,18 @@ function appendMessage(role, content, metadata = null) {
   messageEl.textContent = content;
 
   if (metadata) {
+    const hasSafetySignal =
+      String(metadata.risk_level ?? "").toLowerCase() === "critical" ||
+      metadata.safety_bypassed === true ||
+      String(metadata.safety_bypassed).toLowerCase() === "true";
+
+    if (hasSafetySignal) {
+      messageEl.classList.add("safety-signal");
+    }
+
     const metadataEl = document.createElement("div");
     metadataEl.className = "metadata";
+    metadataEl.classList.toggle("safety-signal", hasSafetySignal);
 
     const titleEl = document.createElement("strong");
     titleEl.textContent = "Demo diagnostics";
@@ -130,6 +146,7 @@ function appendMessage(role, content, metadata = null) {
       ["Safety bypass", metadata.safety_bypassed ?? false],
       ["Needs exploration", metadata.needs_exploration ?? false],
       ["Response time", metadata.response_time ?? "unknown"],
+      ["Session ID", metadata.session_id ?? sessionId],
     ].forEach(([label, value]) => {
       const termEl = document.createElement("dt");
       const descriptionEl = document.createElement("dd");
@@ -245,10 +262,7 @@ async function sendMessage(message) {
   };
 }
 
-formEl.addEventListener("submit", async (event) => {
-  event.preventDefault();
-
-  const message = inputEl.value.trim();
+async function handleMessageSubmit(message) {
   if (!message) {
     return;
   }
@@ -267,6 +281,7 @@ formEl.addEventListener("submit", async (event) => {
       safety_bypassed: data.safety_bypassed,
       needs_exploration: data.needs_exploration,
       response_time: data.response_time,
+      session_id: sessionId,
     });
     saveConversationMessage("assistant", data.assistant_message || "", {
       emotion: data.emotion,
@@ -274,6 +289,7 @@ formEl.addEventListener("submit", async (event) => {
       safety_bypassed: data.safety_bypassed,
       needs_exploration: data.needs_exploration,
       response_time: data.response_time,
+      session_id: sessionId,
     });
   } catch (error) {
     console.error(error);
@@ -282,6 +298,24 @@ formEl.addEventListener("submit", async (event) => {
     setLoading(false);
     inputEl.focus();
   }
+}
+
+function startNewSession() {
+  sessionId = crypto.randomUUID();
+  localStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+  sessionIdEl.textContent = sessionId;
+  messagesEl.innerHTML = "";
+  inputEl.value = "";
+  setError(false);
+  getCurrentConversation();
+  renderHistory();
+  setActiveView("chat");
+  inputEl.focus();
+}
+
+formEl.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await handleMessageSubmit(inputEl.value.trim());
 });
 
 chatTabEl.addEventListener("click", () => {
@@ -292,15 +326,15 @@ historyTabEl.addEventListener("click", () => {
   setActiveView("history");
 });
 
-newConversationButtonEl.addEventListener("click", () => {
-  sessionId = crypto.randomUUID();
-  localStorage.setItem(SESSION_STORAGE_KEY, sessionId);
-  sessionIdEl.textContent = sessionId;
-  messagesEl.innerHTML = "";
-  getCurrentConversation();
-  renderHistory();
-  setActiveView("chat");
-  inputEl.focus();
+newConversationButtonEl.addEventListener("click", startNewSession);
+resetSessionButtonEl.addEventListener("click", startNewSession);
+
+demoCaseButtonEls.forEach((buttonEl) => {
+  buttonEl.addEventListener("click", async () => {
+    const message = buttonEl.dataset.demoMessage;
+    inputEl.value = message;
+    await handleMessageSubmit(message);
+  });
 });
 
 getCurrentConversation();

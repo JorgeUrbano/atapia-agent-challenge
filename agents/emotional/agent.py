@@ -16,6 +16,11 @@ emotional_agent = Agent(
     description="Analyzes the user's emotional state and extracts structured emotional information.",
     instruction=(
         "Return strict JSON matching EmotionalAnalysis. "
+        "Return only valid JSON. "
+        "Use double quotes for all keys and string values. "
+        "Do not use markdown. "
+        "Do not include explanations outside JSON. "
+        "Do not include trailing commas. "
         "Use only Known context and Current message; do not invent facts. "
         "Primary emotion must be one of: sadness, anxiety, stress, loneliness, "
         "frustration, guilt, fear, anger, grief, unknown. "
@@ -28,7 +33,8 @@ emotional_agent = Agent(
         "Do not provide support, advice, or conversational text."
     ),
     generate_content_config=types.GenerateContentConfig(
-        max_output_tokens=300,
+        max_output_tokens=350,
+        response_mime_type="application/json",
     ),
     output_schema=EmotionalAnalysis,
 )
