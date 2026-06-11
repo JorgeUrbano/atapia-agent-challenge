@@ -691,6 +691,8 @@ class Coordinator:
                 guidance_plan=guidance_result,
                 risk_level=risk_level,
                 needs_exploration=plan.needs_exploration,
+                user_message=user_message,
+                memory_context=memory_context,
             )
 
         return CoordinatorResponse(

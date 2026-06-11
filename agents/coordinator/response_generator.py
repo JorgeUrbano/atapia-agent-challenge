@@ -76,6 +76,8 @@ def generate_assistant_message(
     guidance_plan,
     risk_level,
     needs_exploration,
+    user_message=None,
+    memory_context=None,
 ):
 
     # Critical risk never goes through Gemini
@@ -94,6 +96,8 @@ def generate_assistant_message(
             safety_assessment=None,
             guidance_plan=guidance_plan,
             needs_exploration=needs_exploration,
+            user_message=user_message,
+            memory_context=memory_context,
         )
 
         return (

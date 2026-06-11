@@ -57,6 +57,8 @@ def _fake_generate_assistant_message(
     guidance_plan,
     risk_level,
     needs_exploration,
+    user_message=None,
+    memory_context=None,
 ):
     return (
         "demo response",
