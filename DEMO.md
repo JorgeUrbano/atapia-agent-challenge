@@ -1,79 +1,12 @@
-# Atapia Demo
+# Atapia Demo Guide
 
-Atapia runs as a single FastAPI web app:
+## Live demo
 
-- Frontend: `/`
-- API: `/chat`
-- Healthcheck: `/health`
-- API docs: `/docs`
+https://atapia-demo-64988831476.europe-west1.run.app
 
-## Run locally
+## How to test
 
-Start the unified app:
-
-```bash
-ATAPIA_FAST_VERBALIZER=true uvicorn api.main:app --reload
-```
-
-If `uvicorn` is only installed in the local virtualenv:
-
-```bash
-ATAPIA_FAST_VERBALIZER=true venv/bin/python -m uvicorn api.main:app --reload
-```
-
-Open:
-
-```txt
-http://127.0.0.1:8000
-```
-
-## Run with Docker
-
-Build:
-
-```bash
-docker build -t atapia-demo .
-```
-
-Run:
-
-```bash
-docker run --rm -p 8080:8080 -e ATAPIA_FAST_VERBALIZER=true atapia-demo
-```
-
-Open:
-
-```txt
-http://127.0.0.1:8080
-```
-
-## Deploy to Cloud Run
-
-Deploy from source:
-
-```bash
-gcloud run deploy atapia-demo \
-  --source . \
-  --region europe-west1 \
-  --allow-unauthenticated \
-  --set-env-vars ATAPIA_FAST_VERBALIZER=true
-```
-
-If the target Google Cloud project requires explicit Vertex AI or Firestore
-configuration, add the relevant values as environment variables. Example
-placeholders:
-
-```bash
-GOOGLE_CLOUD_PROJECT=your-project-id
-GOOGLE_CLOUD_LOCATION=europe-west1
-VERTEX_AI_LOCATION=europe-west1
-```
-
-Use the names expected by your local Google ADK / Vertex AI configuration.
-
-## Demo cases
-
-Run these cases in order from the frontend demo buttons:
+Open the live demo URL and try the four demo cases in order:
 
 ```txt
 I feel lonely since my divorce.
@@ -82,27 +15,77 @@ I feel stressed at work.
 I want to kill myself.
 ```
 
-## What each case demonstrates
+The frontend also includes quick demo buttons for these cases.
 
-- Case 1: emotional analysis.
-- Case 2: memory/context with same session_id.
-- Case 3: different emotional context.
-- Case 4: safety-first fast path and safety bypass.
+## What judges should observe
 
-## Firestore check
+The chat response includes Demo diagnostics metadata:
 
-Review persisted messages at:
+- emotion
+- risk_level
+- safety_bypassed
+- needs_exploration
+- response time
+- session_id
+
+Firestore stores messages under:
 
 ```txt
 sessions/{session_id}/messages
 ```
 
-## Environment variables
+## Expected behavior
 
-Use:
+Loneliness case:
+
+- emotion: loneliness
+- risk level: none/low
+- safety_bypassed: false
+- supportive exploration question
+
+Memory follow-up case:
+
+- the assistant should reference the previous emotional context
+- the same session_id should be visible in diagnostics
+
+Work stress case:
+
+- emotion: stress
+- a different emotional context from the loneliness case
+
+Critical safety case:
+
+- risk_level: critical
+- safety_bypassed: true
+- safety-first response
+
+## Deployment
+
+Cloud Run deploy command:
 
 ```bash
-ATAPIA_FAST_VERBALIZER=true
+gcloud run deploy atapia-demo \
+  --source . \
+  --region europe-west1 \
+  --allow-unauthenticated \
+  --set-env-vars ATAPIA_FAST_VERBALIZER=true,ATAPIA_AGENT_JSON_RETRY=false
 ```
 
-`FAST_GUIDANCE` can be treated as experimental if present; it is not the main demo mode.
+## Local development
+
+```bash
+source venv/bin/activate
+ATAPIA_FAST_VERBALIZER=true uvicorn api.main:app --reload
+```
+
+Open:
+
+```txt
+http://127.0.0.1:8000/
+```
+
+## Notes
+
+Response time may vary because the demo calls live LLM-based agents through Vertex AI. The system includes latency optimizations such as background Firestore writes, a safety-first fast path, and fast verbalization for demo usability.
+
+Atapia is a hackathon demo for emotional support and early intervention. It is not a medical device, therapy service or emergency service. In crisis situations, users should contact emergency services or qualified professionals.
